@@ -5,8 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -21,99 +23,116 @@ fun UserCatalogScreen(
     products: List<Product>,
     onProductClick: (Product) -> Unit,
     onLogout: () -> Unit,
-    onAddToCart: (Product) -> Unit, // Новый параметр
-    onViewCart: () -> Unit // Новый параметр
+    onAddToCart: (Product) -> Unit,
+    onViewCart: () -> Unit,
+    onViewOrderHistory: () -> Unit // Новый параметр для просмотра истории заказов
 ) {
+    var showLogoutConfirmation by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         Text(
-            text = "Catalog",
+            text = "Каталог",
             style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        Button(
-            onClick = onViewCart, // Переход к экрану корзины
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("View Cart")
-        }
-
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(products, key = { it.id }) { product ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ProductImage(
-                        imageUrl = product.image_url ?: "",
-                        contentDescription = "Image of ${product.name}",
-                        modifier = Modifier.size(64.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(product.name, style = MaterialTheme.typography.bodyLarge)
-                        Text("Price: ${product.price}", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Button(onClick = {
-                        Log.d("Cart", "Add to Cart clicked for product: ${product.name}")
-                        onAddToCart(product)
-                    }) {
-                        Text("Add to Cart")
-                    }
-
-
-                }
+            Button(onClick = onViewCart, modifier = Modifier.weight(1f)) {
+                Text("Просмотреть корзину")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = onViewOrderHistory, modifier = Modifier.weight(1f)) {
+                Text("История заказов")
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            items(products, key = { it.id }) { product ->
+                ProductCard(
+                    product = product,
+                    onAddToCart = onAddToCart,
+                    onProductClick = onProductClick
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(
-            onClick = onLogout,
+            onClick = { showLogoutConfirmation = true },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Logout")
+            Text("Выйти")
         }
+    }
+
+    if (showLogoutConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirmation = false },
+            title = { Text("Подтверждение выхода") },
+            text = { Text("Вы уверены что хотите выйти?") },
+            confirmButton = {
+                Button(onClick = {
+                    showLogoutConfirmation = false
+                    onLogout()
+                }) {
+                    Text("Да")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showLogoutConfirmation = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
     }
 }
 
 @Composable
-fun ProductCard(product: Product, onProductClick: (Product) -> Unit) {
+fun ProductCard(
+    product: Product,
+    onAddToCart: (Product) -> Unit,
+    onProductClick: (Product) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onProductClick(product) }
+            .padding(8.dp),
+        elevation = CardDefaults.elevatedCardElevation(8.dp) // Указываем elevation через CardDefaults
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
             ProductImage(
                 imageUrl = product.image_url ?: "",
-                contentDescription = "Изображение ${product.name}",
+                contentDescription = "Image of ${product.name}",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1.5f) // Соотношение сторон изображения
+                    .aspectRatio(1.5f)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = product.name,
-                style = MaterialTheme.typography.headlineMedium, // Увеличенный шрифт
-                modifier = Modifier.padding(bottom = 4.dp)
+                style = MaterialTheme.typography.headlineMedium
             )
-
             Text(
                 text = "Цена: ${product.price} руб.",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 4.dp)
+                style = MaterialTheme.typography.bodyLarge
             )
 
             if (product.stock > 0) {
@@ -129,8 +148,16 @@ fun ProductCard(product: Product, onProductClick: (Product) -> Unit) {
                     color = MaterialTheme.colorScheme.error
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = { onAddToCart(product) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Добавить в корзину")
+            }
         }
     }
 }
-
 

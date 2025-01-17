@@ -2,12 +2,10 @@ package com.example.musicstoretest.data.models
 
 import kotlinx.serialization.Serializable
 
-
 @Serializable
-data class User(
-    val id: String,
-    val email: String,
-    val password: String,
+data class UpdateUserRequest(
     val name: String,
-    val role: String
+    val email: String,
+    val role: String,
+    val password: String
 )

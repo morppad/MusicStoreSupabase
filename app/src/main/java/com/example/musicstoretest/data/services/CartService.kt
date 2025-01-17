@@ -4,16 +4,18 @@ import android.util.Log
 import com.example.musicstoretest.data.models.CartItem
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class AddToCartRequest(
+    val user_id: String,
+    val product_id: String,
+    val quantity: Int
+)
 
 suspend fun addToCart(userId: String, productId: String, quantity: Int = 1): Boolean {
     return try {
-        // Формируем данные для вставки
-        val data = mapOf(
-            "user_id" to userId,
-            "product_id" to productId,
-            "quantity" to quantity
-        )
-
+        val data = AddToCartRequest(userId, productId, quantity)
         supabase.from("carts").insert(data)
         Log.d("CartService", "Product added to cart successfully: $data")
         true
@@ -24,20 +26,18 @@ suspend fun addToCart(userId: String, productId: String, quantity: Int = 1): Boo
 }
 
 
-suspend fun removeFromCart(userId: String, productId: String): Boolean {
+suspend fun removeCartItemSafely(cartItem: CartItem): Boolean {
     return try {
         supabase.from("carts").delete {
-            filter {
-                eq("user_id", userId)
-                eq("product_id", productId)
-            }
+            filter { eq("id", cartItem.id) }
         }
         true
     } catch (e: Exception) {
-        Log.e("CartService", "Error removing from cart", e)
+        Log.e("CartService", "Error removing cart item", e)
         false
     }
 }
+
 
 suspend fun updateCartItem(userId: String, productId: String, quantity: Int): Boolean {
     return try {

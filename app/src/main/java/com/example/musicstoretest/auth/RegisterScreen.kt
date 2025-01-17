@@ -29,12 +29,12 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onBack: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Register Screen", modifier = Modifier.padding(bottom = 16.dp))
+        Text("Регистрация", modifier = Modifier.padding(bottom = 16.dp))
 
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Name") },
+            label = { Text("Имя") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -52,7 +52,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onBack: () -> Unit) {
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = { Text("Пароль") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -63,23 +63,23 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onBack: () -> Unit) {
                 try {
                     registerUser(email, password, name)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Registration successful", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Успешная регистрация", Toast.LENGTH_SHORT).show()
                         onRegisterSuccess()
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Registration failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Ошибка регистрации: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }) {
-            Text("Register")
+            Text("Зарегистрироваться")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = onBack) {
-            Text("Back")
+            Text("Назад")
         }
     }
 }

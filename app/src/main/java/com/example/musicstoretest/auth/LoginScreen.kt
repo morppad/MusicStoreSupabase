@@ -28,7 +28,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit, onBack: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Login Screen", modifier = Modifier.padding(bottom = 16.dp))
+        Text("Вход", modifier = Modifier.padding(bottom = 16.dp))
 
         OutlinedTextField(
             value = email,
@@ -42,7 +42,7 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit, onBack: () -> Unit) {
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = { Text("Пароль") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -62,18 +62,18 @@ fun LoginScreen(onLoginSuccess: (String, String) -> Unit, onBack: () -> Unit) {
                 )
             }
         }) {
-            Text("Login")
+            Text("Войти")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = onBack) {
-            Text("Back")
+            Text("Назад")
         }
 
         errorMessage?.let {
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Error: $it", color = androidx.compose.ui.graphics.Color.Red)
+            Text("Ошибка: $it", color = androidx.compose.ui.graphics.Color.Red)
         }
     }
 }

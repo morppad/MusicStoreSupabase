@@ -19,21 +19,40 @@ import com.example.musicstoretest.auth.LoginScreen
 import com.example.musicstoretest.auth.RegisterScreen
 import com.example.musicstoretest.data.models.Product
 import com.example.musicstoretest.data.models.CartItem
+import com.example.musicstoretest.data.models.Order
+import com.example.musicstoretest.data.models.OrderItem
+import com.example.musicstoretest.data.models.User
 import com.example.musicstoretest.data.services.addProduct
 import com.example.musicstoretest.data.services.addToCart
+import com.example.musicstoretest.data.services.addUser
 import com.example.musicstoretest.data.services.deleteProduct
+import com.example.musicstoretest.data.services.deleteUser
 import com.example.musicstoretest.data.services.diff
+import com.example.musicstoretest.data.services.fetchCart
+import com.example.musicstoretest.data.services.fetchOrders
 import com.example.musicstoretest.data.services.fetchProducts
+import com.example.musicstoretest.data.services.fetchUsers
+import com.example.musicstoretest.data.services.placeOrder
+import com.example.musicstoretest.data.services.removeCartItemSafely
+import com.example.musicstoretest.data.services.supabase
+import com.example.musicstoretest.data.services.toUpdateRequest
 import com.example.musicstoretest.data.services.updateProduct
+import com.example.musicstoretest.data.services.updateUser
 import com.example.musicstoretest.ui.screens.AddEditProductScreen
+import com.example.musicstoretest.ui.screens.AddEditUserScreen
 import com.example.musicstoretest.ui.screens.CartScreen
 import com.example.musicstoretest.ui.screens.ProductDetailsScreen
 import com.example.musicstoretest.ui.screens.ProductsManagementScreen
 import com.example.musicstoretest.ui.screens.GuestCatalogScreen
+import com.example.musicstoretest.ui.screens.OrderConfirmationScreen
+import com.example.musicstoretest.ui.screens.OrderHistoryScreen
 import com.example.musicstoretest.ui.screens.UserCatalogScreen
+import com.example.musicstoretest.ui.screens.UsersManagementScreen
 
 import com.example.musicstoretest.ui.theme.MusicStoreTestTheme
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,36 +77,84 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation() {
-    var currentScreen by remember { mutableStateOf("main") }
-    var userRole by remember { mutableStateOf<String?>(null) }
-    var selectedProduct by remember { mutableStateOf<Product?>(null) }
-    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
-    val coroutineScope = rememberCoroutineScope()
-    var currentUserId by remember { mutableStateOf<String?>(null) } // Сохраняем текущего пользователя
+    var currentScreen by remember { mutableStateOf("main") } // Текущий экран
+    var userRole by remember { mutableStateOf<String?>(null) } // Роль текущего пользователя
+    var selectedProduct by remember { mutableStateOf<Product?>(null) } // Выбранный продукт
+    var products by remember { mutableStateOf<List<Product>>(emptyList()) } // Список всех продуктов
+    var currentUserId by remember { mutableStateOf<String?>(null) } // ID текущего пользователя
+    var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) } // Товары в корзине
+    var users by remember { mutableStateOf<List<User>>(emptyList()) } // Список пользователей
+    var selectedUser by remember { mutableStateOf<User?>(null) } // Выбранный пользователь
+    var orders by remember { mutableStateOf<List<Order>>(emptyList()) } // Список заказов
+    val coroutineScope = rememberCoroutineScope() // Скоуп для выполнения операций
 
+    // Helper function to fetch products
     LaunchedEffect(currentScreen) {
-        if (currentScreen == "catalog" || currentScreen == "guestCatalog" || currentScreen == "manageProducts") {
-            val loadedProducts = fetchProducts()
-            Log.d("AppNavigation", "Fetched products: $loadedProducts")
-            products = loadedProducts
+        if (currentScreen in listOf("catalog", "guestCatalog", "manageProducts")) {
+            products = fetchProducts()
         }
     }
+
+    suspend fun fetchOrdersSafely(userId: String): List<Order> = try {
+        fetchOrders(userId)
+    } catch (e: Exception) {
+        Log.e("OrderService", "Error fetching orders", e)
+        emptyList()
+    }
+
+    suspend fun placeOrderSafely(userId: String, address: String): Boolean {
+        return try {
+            val orderId = UUID.randomUUID().toString()
+            val totalPrice = cartItems.sumOf { it.quantity * it.products.price }
+
+            val order = Order(
+                id = orderId,
+                user_id = userId,
+                total_price = totalPrice,
+                address = address // Добавляем адрес
+            )
+
+            supabase.from("orders").insert(order)
+
+            val orderItems = cartItems.map { cartItem ->
+                OrderItem(
+                    id = UUID.randomUUID().toString(),
+                    order_id = orderId,
+                    product_id = cartItem.product_id,
+                    quantity = cartItem.quantity,
+                    price = cartItem.products.price
+                )
+            }
+
+            supabase.from("order_items").insert(orderItems)
+
+            supabase.from("carts").delete {
+                filter { eq("user_id", userId) }
+            }
+
+            Log.d("OrderService", "Order placed successfully: $orderId")
+            true
+        } catch (e: Exception) {
+            Log.e("OrderService", "Error placing order", e)
+            false
+        }
+    }
+
 
     when (currentScreen) {
         "main" -> MainScreen(
             onLoginClick = { currentScreen = "login" },
             onRegisterClick = { currentScreen = "register" },
-            onGuestLoginClick = { currentScreen = "guestCatalog" } // Гостевой вход
+            onGuestLoginClick = { currentScreen = "guestCatalog" }
         )
         "login" -> LoginScreen(
             onLoginSuccess = { userId, role ->
-                currentUserId = userId // Сохраняем userId
-                userRole = role // Сохраняем роль
+                currentUserId = userId
+                userRole = role
                 currentScreen = if (role == "admin") "adminDashboard" else "catalog"
             },
             onBack = { currentScreen = "main" }
         )
-
         "register" -> RegisterScreen(
             onRegisterSuccess = { currentScreen = "main" },
             onBack = { currentScreen = "main" }
@@ -101,25 +168,16 @@ fun AppNavigation() {
             onLogout = { currentScreen = "main" },
             onAddToCart = { product ->
                 coroutineScope.launch {
-                    val userId = currentUserId
-                    if (userId != null) {
-                        if (addToCart(userId, product.id)) {
-                            Log.d("Cart", "Product added to cart: ${product.name}")
-                        } else {
+                    currentUserId?.let {
+                        if (!addToCart(it, product.id)) {
                             Log.e("Cart", "Failed to add product to cart")
                         }
-                    } else {
-                        Log.e("Cart", "User ID is null. Cannot add to cart.")
-                    }
+                    } ?: Log.e("Cart", "User ID is null")
                 }
-            }
-,
-            onViewCart = {
-                currentScreen = "cart"
-            }
+            },
+            onViewCart = { currentScreen = "cart" },
+            onViewOrderHistory = { currentScreen = "orderHistory" }
         )
-
-
         "guestCatalog" -> GuestCatalogScreen(
             products = products,
             onProductClick = { product ->
@@ -133,16 +191,12 @@ fun AppNavigation() {
                 product = product,
                 onBack = { currentScreen = "catalog" }
             )
-        } ?: run {
-            currentScreen = "catalog"
         }
         "guestDetails" -> selectedProduct?.let { product ->
             ProductDetailsScreen(
                 product = product,
                 onBack = { currentScreen = "guestCatalog" }
             )
-        } ?: run {
-            currentScreen = "guestCatalog"
         }
         "adminDashboard" -> AdminDashboard(
             onManageProductsClick = { currentScreen = "manageProducts" },
@@ -186,11 +240,100 @@ fun AppNavigation() {
             onCancel = { currentScreen = "manageProducts" }
         )
         "cart" -> currentUserId?.let { userId ->
+            LaunchedEffect(userId) {
+                cartItems = fetchCart(userId) // Загружаем корзину пользователя
+            }
             CartScreen(
                 userId = userId,
+                cartItems = cartItems, // Передаём список товаров
+                onBack = { currentScreen = "catalog" },
+                onPlaceOrder = { address -> // Передаём адрес в placeOrderSafely
+                    coroutineScope.launch {
+                        if (placeOrderSafely(userId, address)) {
+                            cartItems = emptyList()
+                            currentScreen = "orderConfirmation"
+                        }
+                    }
+                },
+                onRemoveItem = { cartItem -> // Передаём логику удаления
+                    coroutineScope.launch {
+                        if (removeCartItemSafely(cartItem)) {
+                            cartItems = fetchCart(userId) // Обновляем корзину после удаления
+                        }
+                    }
+                }
+            )
+        }
+
+
+        "orderHistory" -> {
+            LaunchedEffect(currentUserId) {
+                currentUserId?.let {
+                    orders = fetchOrdersSafely(it)
+                }
+            }
+            OrderHistoryScreen(
+                orders = orders,
                 onBack = { currentScreen = "catalog" }
             )
         }
+        "orderConfirmation" -> OrderConfirmationScreen(
+            onBackToCatalog = { currentScreen = "catalog" }
+        )
+        "manageUsers" -> {
+
+            LaunchedEffect(Unit) {
+                users = fetchUsers() // Загружаем список пользователей
+            }
+
+            UsersManagementScreen(
+                users = users,
+                onAddUserClick = {
+                    selectedUser = null // Сбрасываем выбранного пользователя при добавлении нового
+                    currentScreen = "addEditUser"
+                },
+                onEditUserClick = { user ->
+                    selectedUser = user // Устанавливаем выбранного пользователя для редактирования
+                    currentScreen = "addEditUser"
+                },
+                onDeleteUserClick = { user ->
+                    coroutineScope.launch {
+                        if (deleteUser(user.id)) {
+                            users = fetchUsers() // Обновляем список после удаления
+                        }
+                    }
+                },
+                onBack = { currentScreen = "adminDashboard" }
+            )
+        }
+        "addEditUser" -> {
+            if (selectedUser == null) {
+                AddEditUserScreen(
+                    user = null, // Для создания нового пользователя
+                    onSave = { updatedUser ->
+                        coroutineScope.launch {
+                            addUser(updatedUser) // Добавляем нового пользователя
+                            val users = fetchUsers() // Обновляем список пользователей
+                            currentScreen = "manageUsers"
+                        }
+                    },
+                    onCancel = { currentScreen = "manageUsers" }
+                )
+            } else {
+                AddEditUserScreen(
+                    user = selectedUser, // Передаём выбранного пользователя для редактирования
+                    onSave = { updatedUser ->
+                        coroutineScope.launch {
+                            updateUser(updatedUser.id, updatedUser.toUpdateRequest()) // Преобразуем User в UpdateUserRequest
+                            val users = fetchUsers() // Обновляем список пользователей
+                            currentScreen = "manageUsers"
+                        }
+                    },
+                    onCancel = { currentScreen = "manageUsers" }
+                )
+            }
+        }
+
     }
 }
 
