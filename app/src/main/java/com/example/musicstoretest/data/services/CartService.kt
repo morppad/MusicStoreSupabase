@@ -2,6 +2,7 @@ package com.example.musicstoretest.data.services
 
 import android.util.Log
 import com.example.musicstoretest.data.models.CartItem
+import com.example.musicstoretest.data.models.Product
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.serialization.Serializable
@@ -15,9 +16,24 @@ data class AddToCartRequest(
 
 suspend fun addToCart(userId: String, productId: String, quantity: Int = 1): Boolean {
     return try {
-        val data = AddToCartRequest(userId, productId, quantity)
-        supabase.from("carts").insert(data)
-        Log.d("CartService", "Product added to cart successfully: $data")
+        val product = supabase.from("products")
+            .select() {
+                filter { eq("id", productId) }
+            }
+            .decodeSingleOrNull<Product>()
+
+        if (product == null || product.stock < quantity) {
+            Log.e("CartService", "Not enough stock for product $productId")
+            return false
+        }
+
+        val cartItem = AddToCartRequest(
+            user_id = userId,
+            product_id = productId,
+            quantity = quantity
+        )
+
+        supabase.from("carts").insert(cartItem)
         true
     } catch (e: Exception) {
         Log.e("CartService", "Error adding product to cart", e)

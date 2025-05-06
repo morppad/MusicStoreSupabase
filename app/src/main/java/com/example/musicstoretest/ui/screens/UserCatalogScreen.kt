@@ -1,38 +1,39 @@
 package com.example.musicstoretest.ui.screens
 
-import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.musicstoretest.data.models.Product
 import com.example.musicstoretest.ui.components.ProductImage
+import kotlinx.coroutines.launch
 
 @Composable
 fun UserCatalogScreen(
     products: List<Product>,
     onProductClick: (Product) -> Unit,
     onLogout: () -> Unit,
-    onAddToCart: (Product) -> Unit,
+    onAddToCart: (Product, (Boolean) -> Unit) -> Unit,
     onViewCart: () -> Unit,
-    onViewOrderHistory: () -> Unit // Новый параметр для просмотра истории заказов
+    onViewOrderHistory: () -> Unit
 ) {
     var showLogoutConfirmation by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope() // Скоуп для выполнения операций
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(8.dp)
     ) {
         Text(
             text = "Каталог",
@@ -44,11 +45,19 @@ fun UserCatalogScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Button(onClick = onViewCart, modifier = Modifier.weight(1f)) {
-                Text("Просмотреть корзину")
+            Button(
+                onClick = onViewCart,
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.shapes.small
+            ) {
+                Text("Корзина")
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onViewOrderHistory, modifier = Modifier.weight(1f)) {
+            Button(
+                onClick = onViewOrderHistory,
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.shapes.small
+            ) {
                 Text("История заказов")
             }
         }
@@ -62,19 +71,44 @@ fun UserCatalogScreen(
             items(products, key = { it.id }) { product ->
                 ProductCard(
                     product = product,
-                    onAddToCart = onAddToCart,
+                    onAddToCart = {
+                        onAddToCart(product) { success ->
+                            if (!success) {
+                                errorMessage = null
+                                coroutineScope.launch {
+                                    Toast.makeText(context, "Товара нет в наличии", Toast.LENGTH_SHORT).show()
+                                }
+                                //errorMessage = "Недостаточно товара на складе"
+                            } else {
+                                errorMessage = null
+                            }
+                        }
+                    },
                     onProductClick = onProductClick
                 )
             }
+        }
+
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage!!,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(8.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = { showLogoutConfirmation = true },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
         ) {
-            Text("Выйти")
+            Text("Выйти", color = MaterialTheme.colorScheme.onError)
         }
     }
 
@@ -82,23 +116,30 @@ fun UserCatalogScreen(
         AlertDialog(
             onDismissRequest = { showLogoutConfirmation = false },
             title = { Text("Подтверждение выхода") },
-            text = { Text("Вы уверены что хотите выйти?") },
+            text = { Text("Вы уверены, что хотите выйти?") },
             confirmButton = {
-                Button(onClick = {
-                    showLogoutConfirmation = false
-                    onLogout()
-                }) {
+                Button(
+                    onClick = {
+                        showLogoutConfirmation = false
+                        onLogout()
+                    },
+                    shape = MaterialTheme.shapes.small
+                ) {
                     Text("Да")
                 }
             },
             dismissButton = {
-                Button(onClick = { showLogoutConfirmation = false }) {
+                Button(
+                    onClick = { showLogoutConfirmation = false },
+                    shape = MaterialTheme.shapes.small
+                ) {
                     Text("Отмена")
                 }
             }
         )
     }
 }
+
 
 @Composable
 fun ProductCard(
@@ -110,12 +151,17 @@ fun ProductCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onProductClick(product) }
-            .padding(8.dp),
-        elevation = CardDefaults.elevatedCardElevation(8.dp) // Указываем elevation через CardDefaults
+            .padding(horizontal = 8.dp),
+        elevation = CardDefaults.cardElevation(0.dp), // Убираем тень
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent // Прозрачный фон
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(12.dp)
         ) {
+            // Product image
             ProductImage(
                 imageUrl = product.image_url ?: "",
                 contentDescription = "Image of ${product.name}",
@@ -126,38 +172,36 @@ fun ProductCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Product name
             Text(
                 text = product.name,
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
+
+            // Product price
             Text(
-                text = "Цена: ${product.price} руб.",
-                style = MaterialTheme.typography.bodyLarge
+                text = "${product.price} ₽",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
             )
 
-            if (product.stock > 0) {
-                Text(
-                    text = "В наличии: ${product.stock}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            } else {
-                Text(
-                    text = "Нет в наличии",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            // Stock status
+            Text(
+                text = if (product.stock > 0) "Есть в наличии" else "Нет в наличии",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (product.stock > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
+            // Add to cart button
             Button(
                 onClick = { onAddToCart(product) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small
             ) {
                 Text("Добавить в корзину")
             }
         }
     }
 }
-

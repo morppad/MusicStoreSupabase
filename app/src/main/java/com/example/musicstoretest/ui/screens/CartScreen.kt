@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import com.example.musicstoretest.data.models.CartItem
@@ -23,58 +24,67 @@ fun CartScreen(
     userId: String,
     cartItems: List<CartItem>,
     onBack: () -> Unit,
-    onPlaceOrder: (String) -> Unit, // Обновляем тип, чтобы принять адрес
+    onPlaceOrder: (String) -> Unit,
     onRemoveItem: (CartItem) -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Корзина") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
+    val context = LocalContext.current
+    var showPaymentScreen by remember { mutableStateOf(false) }
+    val orderTotal by remember(cartItems) {
+        derivedStateOf {
+            cartItems.sumOf { it.quantity * it.products.price }.toDouble()
         }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (cartItems.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Ваша корзина пуста",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.Gray
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(cartItems) { cartItem ->
-                        CartItemCard(
-                            cartItem = cartItem,
-                            onRemove = { onRemoveItem(cartItem) } // Передаём логику удаления
+    }
+    var deliveryAddress by remember { mutableStateOf("") }
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Корзина") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Назад"
+                            )
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                if (cartItems.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Ваша корзина пуста",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                         )
                     }
-                }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(cartItems) { cartItem ->
+                            CartItemCard(
+                                cartItem = cartItem,
+                                onRemove = { onRemoveItem(cartItem) }
+                            )
+                        }
+                    }
 
-                // Bottom Summary Section
-                CartSummary(cartItems = cartItems, onPlaceOrder = onPlaceOrder) // Корректный вызов
+                    CartSummary(cartItems = cartItems, onPlaceOrder = onPlaceOrder)
+                }
             }
         }
     }
-}
 
 
 @Composable
@@ -82,8 +92,11 @@ fun CartItemCard(cartItem: CartItem, onRemove: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
+            .padding(horizontal = 8.dp),
+        shape = MaterialTheme.shapes.small,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -91,7 +104,7 @@ fun CartItemCard(cartItem: CartItem, onRemove: () -> Unit) {
         ) {
             Image(
                 painter = rememberAsyncImagePainter(cartItem.products.image_url),
-                contentDescription = "Product Image",
+                contentDescription = "Изображение товара",
                 modifier = Modifier
                     .size(80.dp)
                     .padding(end = 16.dp),
@@ -108,10 +121,10 @@ fun CartItemCard(cartItem: CartItem, onRemove: () -> Unit) {
                 Text(
                     text = "Количество: ${cartItem.quantity}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
                 Text(
-                    text = "Цена: ${cartItem.products.price} руб.",
+                    text = "Цена: ${cartItem.products.price} ₽",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -120,14 +133,14 @@ fun CartItemCard(cartItem: CartItem, onRemove: () -> Unit) {
 
             Button(
                 onClick = onRemove,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                shape = MaterialTheme.shapes.small
             ) {
-                Text("Удалить", color = Color.White)
+                Text("Удалить", color = MaterialTheme.colorScheme.onError)
             }
         }
     }
 }
-
 
 @Composable
 fun CartSummary(cartItems: List<CartItem>, onPlaceOrder: (String) -> Unit) {
@@ -138,7 +151,7 @@ fun CartSummary(cartItems: List<CartItem>, onPlaceOrder: (String) -> Unit) {
         AddressDialog(
             onConfirm = { address ->
                 showAddressDialog = false
-                onPlaceOrder(address) // Передаём адрес в вызываемую функцию
+                onPlaceOrder(address)
             },
             onDismiss = { showAddressDialog = false }
         )
@@ -149,7 +162,7 @@ fun CartSummary(cartItems: List<CartItem>, onPlaceOrder: (String) -> Unit) {
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        Divider(color = Color.Gray, thickness = 1.dp)
+        Divider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f), thickness = 1.dp)
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(
@@ -162,7 +175,7 @@ fun CartSummary(cartItems: List<CartItem>, onPlaceOrder: (String) -> Unit) {
                 style = MaterialTheme.typography.headlineMedium
             )
             Text(
-                text = "$totalPrice руб.",
+                text = "$totalPrice ₽",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -171,15 +184,15 @@ fun CartSummary(cartItems: List<CartItem>, onPlaceOrder: (String) -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { showAddressDialog = true }, // Показать диалог для ввода адреса
+            onClick = { showAddressDialog = true },
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            shape = MaterialTheme.shapes.small
         ) {
-            Text("Оформить заказ", color = Color.Gray)
+            Text("Оформить заказ", color = MaterialTheme.colorScheme.onPrimary)
         }
     }
 }
-
 
 @Composable
 fun AddressDialog(
@@ -204,12 +217,12 @@ fun AddressDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(address) }) {
+            Button(onClick = { onConfirm(address) }, shape = MaterialTheme.shapes.small) {
                 Text("Подтвердить")
             }
         },
         dismissButton = {
-            Button(onClick = onDismiss) {
+            Button(onClick = onDismiss, shape = MaterialTheme.shapes.small) {
                 Text("Отмена")
             }
         }

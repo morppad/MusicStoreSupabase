@@ -66,24 +66,21 @@ suspend fun addProduct(product: Product): Boolean {
 
 suspend fun updateProduct(productId: String, updates: Map<String, Any?>): Boolean {
     return try {
-        // Добавляем или обновляем поле updated_at
         val sanitizedUpdates = updates.toMutableMap()
         sanitizedUpdates["updated_at"] = getCurrentTimestamp()
 
-        // Преобразуем карту в JSON-объект
         val jsonObject = buildJsonObject {
             sanitizedUpdates.forEach { (key, value) ->
                 when (value) {
                     is String -> put(key, value)
                     is Number -> put(key, value)
                     is Boolean -> put(key, value)
-                    null -> put(key, null as String?) // Обработка null
+                    null -> put(key, null as String?)
                     else -> throw IllegalArgumentException("Unsupported type: ${value::class}")
                 }
             }
         }
 
-        // Выполняем обновление в базе данных
         supabase.from("products").update(Json.encodeToJsonElement(jsonObject)) {
             filter { eq("id", productId) }
         }
@@ -94,7 +91,6 @@ suspend fun updateProduct(productId: String, updates: Map<String, Any?>): Boolea
     }
 }
 
-
 fun Product.diff(original: Product): Map<String, Any?> {
     val updates = mutableMapOf<String, Any?>()
 
@@ -104,7 +100,6 @@ fun Product.diff(original: Product): Map<String, Any?> {
     if (image_url != original.image_url) updates["image_url"] = image_url
     if (stock != original.stock) updates["stock"] = stock
 
-    // Обновляем `updated_at` только если есть изменения
     if (updates.isNotEmpty()) {
         updates["updated_at"] = System.currentTimeMillis()
     }

@@ -4,17 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import com.example.musicstoretest.data.models.Product
-import com.example.musicstoretest.data.services.fetchProducts
 import com.example.musicstoretest.ui.components.ProductImage
 
 @Composable
@@ -26,7 +23,7 @@ fun GuestCatalogScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(8.dp)
     ) {
         Text(
             text = "Каталог товаров",
@@ -42,8 +39,8 @@ fun GuestCatalogScreen(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp) // Отступы между товарами
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 items(products, key = { it.id }) { product ->
                     GuestProductCard(product = product, onProductClick = onProductClick)
@@ -55,9 +52,11 @@ fun GuestCatalogScreen(
 
         Button(
             onClick = onLogout,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small, // Закругленные углы кнопки
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text("К главному экрану")
+            Text("К главному экрану", color = MaterialTheme.colorScheme.onPrimary)
         }
     }
 }
@@ -67,49 +66,53 @@ fun GuestProductCard(product: Product, onProductClick: (Product) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onProductClick(product) }
+            .padding(8.dp)
+            .clickable { onProductClick(product) },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent // Прозрачный фон
+
+        )
+
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(12.dp)
+
         ) {
             ProductImage(
                 imageUrl = product.image_url ?: "",
                 contentDescription = "Изображение ${product.name}",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1.5f) // Соотношение сторон изображения
+                    .aspectRatio(1.5f)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
+                textAlign = TextAlign.Center, // Выравнивание текста по центру
                 text = product.name,
-                style = MaterialTheme.typography.headlineMedium, // Увеличенный шрифт
+                style = MaterialTheme.typography.headlineSmall, // Крупный шрифт для названия
                 modifier = Modifier.padding(bottom = 4.dp)
             )
 
             Text(
-                text = "Цена: ${product.price} руб.",
-                style = MaterialTheme.typography.bodyLarge,
+                text = "${product.price} ₽",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
 
-            if (product.stock > 0) {
-                Text(
-                    text = "В наличии: ${product.stock}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            } else {
-                Text(
-                    text = "Нет в наличии",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            Text(
+                text = if (product.stock > 0) "Есть в наличии" else "Нет в наличии",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (product.stock > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
         }
     }
 }
-
-
-

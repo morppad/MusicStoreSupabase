@@ -7,6 +7,7 @@ import com.example.musicstoretest.data.services.supabase
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 
 suspend fun loginUser(
     email: String,
@@ -42,22 +43,32 @@ suspend fun loginUser(
 
 suspend fun registerUser(email: String, password: String, name: String) {
     try {
-        // Хэшируем пароль
+        val existingUsers = supabase.from("users")
+            .select(Columns.raw("id")) {
+                filter { eq("email", email) }
+            }
+            .decodeList<Map<String, String>>() // можно декодировать в любой простой тип
+
+        if (existingUsers.isNotEmpty()) {
+            throw IllegalArgumentException("Пользователь с такой почтой уже существует")
+        }
+
         val hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray())
 
-        // Добавляем пользователя в таблицу users
         supabase.from("users").insert(
             mapOf(
                 "email" to email,
                 "name" to name,
                 "password" to hashedPassword,
-                "role" to "customer" // Роль по умолчанию
+                "role" to "customer"
             )
         )
+
         Log.d("AuthService", "User registered successfully")
     } catch (e: Exception) {
         Log.e("AuthService", "Registration failed", e)
         throw e
     }
 }
+
 

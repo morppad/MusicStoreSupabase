@@ -5,12 +5,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -42,7 +46,7 @@ fun AddEditProductScreen(
     var stock by remember { mutableStateOf(product?.stock?.toString() ?: "") }
     var description by remember { mutableStateOf(product?.description ?: "") }
     var imageUrl by remember { mutableStateOf(product?.image_url ?: "") }
-    var showUploadSuccess by remember { mutableStateOf(false) } // Управление сообщением об успехе
+    var showUploadSuccess by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -56,7 +60,7 @@ fun AddEditProductScreen(
                 )
                 if (uploadedImageUrl != null) {
                     imageUrl = uploadedImageUrl
-                    showUploadSuccess = true // Показать сообщение об успехе
+                    showUploadSuccess = true
                 }
             }
         }
@@ -66,92 +70,118 @@ fun AddEditProductScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.SpaceBetween, // Пространство равномерно распределено
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = if (product == null) "Add Product" else "Edit Product",
-            style = MaterialTheme.typography.headlineLarge
+            text = if (product == null) "Добавить продукт" else "Редактировать продукт",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().weight(1f),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            item {
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { price = it },
+                    label = { Text("Цена") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            item {
+                OutlinedTextField(
+                    value = stock,
+                    onValueChange = { stock = it },
+                    label = { Text("Количество") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
-        OutlinedTextField(
-            value = price,
-            onValueChange = { price = it },
-            label = { Text("Price") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            item {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Описание") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            item {
+                Button(
+                    onClick = { launcher.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text("Выбрать и загрузить изображение")
+                }
 
-        OutlinedTextField(
-            value = stock,
-            onValueChange = { stock = it },
-            label = { Text("Stock") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Description") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = { launcher.launch("image/*") }) {
-            Text("Select and Upload Image")
-        }
-
-        // Отображение сообщения об успехе загрузки изображения
-        if (showUploadSuccess) {
-            Text(
-                text = "Image uploaded successfully!",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            val productToSave = Product(
-                id = product?.id ?: UUID.randomUUID().toString(),
-                name = name,
-                price = price.toDoubleOrNull() ?: 0.0,
-                stock = stock.toIntOrNull() ?: 0,
-                description = description,
-                image_url = imageUrl,
-                created_at = product?.created_at,
-                updated_at = getCurrentTimestamp()
-            )
-            onSave(productToSave)
-            showUploadSuccess = false // Скрыть сообщение при сохранении
-        }) {
-            Text("Save")
+                if (showUploadSuccess) {
+                    Text(
+                        text = "Изображение успешно загружено!",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            showUploadSuccess = false // Скрыть сообщение при отмене
-            onCancel()
-        }) {
-            Text("Cancel")
+        // Кнопки управления
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Button(
+                onClick = {
+                    val productToSave = Product(
+                        id = product?.id ?: UUID.randomUUID().toString(),
+                        name = name,
+                        price = price.toDoubleOrNull() ?: 0.0,
+                        stock = stock.toIntOrNull() ?: 0,
+                        description = description,
+                        image_url = imageUrl,
+                        created_at = product?.created_at,
+                        updated_at = getCurrentTimestamp()
+                    )
+                    onSave(productToSave)
+                    showUploadSuccess = false
+                },
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.shapes.small,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Сохранить", color = MaterialTheme.colorScheme.onPrimary)
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Button(
+                onClick = {
+                    showUploadSuccess = false
+                    onCancel()
+                },
+                modifier = Modifier.weight(1f),
+                shape = MaterialTheme.shapes.small,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Отменить", color = MaterialTheme.colorScheme.onError)
+            }
         }
     }
 }
-

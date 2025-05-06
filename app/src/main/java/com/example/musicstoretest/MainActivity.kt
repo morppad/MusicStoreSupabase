@@ -6,9 +6,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +25,7 @@ import com.example.musicstoretest.data.models.Product
 import com.example.musicstoretest.data.models.CartItem
 import com.example.musicstoretest.data.models.Order
 import com.example.musicstoretest.data.models.OrderItem
+import com.example.musicstoretest.data.models.UpdateOrderRequest
 import com.example.musicstoretest.data.models.User
 import com.example.musicstoretest.data.services.addProduct
 import com.example.musicstoretest.data.services.addToCart
@@ -29,13 +34,16 @@ import com.example.musicstoretest.data.services.deleteProduct
 import com.example.musicstoretest.data.services.deleteUser
 import com.example.musicstoretest.data.services.diff
 import com.example.musicstoretest.data.services.fetchCart
+import com.example.musicstoretest.data.services.fetchOrderItems
 import com.example.musicstoretest.data.services.fetchOrders
+import com.example.musicstoretest.data.services.fetchOrdersAdmin
 import com.example.musicstoretest.data.services.fetchProducts
 import com.example.musicstoretest.data.services.fetchUsers
 import com.example.musicstoretest.data.services.placeOrder
 import com.example.musicstoretest.data.services.removeCartItemSafely
 import com.example.musicstoretest.data.services.supabase
 import com.example.musicstoretest.data.services.toUpdateRequest
+import com.example.musicstoretest.data.services.updateOrder
 import com.example.musicstoretest.data.services.updateProduct
 import com.example.musicstoretest.data.services.updateUser
 import com.example.musicstoretest.ui.screens.AddEditProductScreen
@@ -45,13 +53,17 @@ import com.example.musicstoretest.ui.screens.ProductDetailsScreen
 import com.example.musicstoretest.ui.screens.ProductsManagementScreen
 import com.example.musicstoretest.ui.screens.GuestCatalogScreen
 import com.example.musicstoretest.ui.screens.OrderConfirmationScreen
+import com.example.musicstoretest.ui.screens.OrderDetailsScreen
 import com.example.musicstoretest.ui.screens.OrderHistoryScreen
+import com.example.musicstoretest.ui.screens.OrderManagementScreen
 import com.example.musicstoretest.ui.screens.UserCatalogScreen
 import com.example.musicstoretest.ui.screens.UsersManagementScreen
 
-import com.example.musicstoretest.ui.theme.MusicStoreTestTheme
+import com.example.musicstoretest.ui.theme.MyAppTheme
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -62,7 +74,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, true)
 
         setContent {
-            MusicStoreTestTheme {
+            MyAppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -87,7 +99,8 @@ fun AppNavigation() {
     var selectedUser by remember { mutableStateOf<User?>(null) } // Выбранный пользователь
     var orders by remember { mutableStateOf<List<Order>>(emptyList()) } // Список заказов
     val coroutineScope = rememberCoroutineScope() // Скоуп для выполнения операций
-
+    val selectedOrder by remember { mutableStateOf<Order?>(null) }
+    var selectedOrderItems by remember { mutableStateOf<List<OrderItem>?>(null) }
     // Helper function to fetch products
     LaunchedEffect(currentScreen) {
         if (currentScreen in listOf("catalog", "guestCatalog", "manageProducts")) {
@@ -100,44 +113,6 @@ fun AppNavigation() {
     } catch (e: Exception) {
         Log.e("OrderService", "Error fetching orders", e)
         emptyList()
-    }
-
-    suspend fun placeOrderSafely(userId: String, address: String): Boolean {
-        return try {
-            val orderId = UUID.randomUUID().toString()
-            val totalPrice = cartItems.sumOf { it.quantity * it.products.price }
-
-            val order = Order(
-                id = orderId,
-                user_id = userId,
-                total_price = totalPrice,
-                address = address // Добавляем адрес
-            )
-
-            supabase.from("orders").insert(order)
-
-            val orderItems = cartItems.map { cartItem ->
-                OrderItem(
-                    id = UUID.randomUUID().toString(),
-                    order_id = orderId,
-                    product_id = cartItem.product_id,
-                    quantity = cartItem.quantity,
-                    price = cartItem.products.price
-                )
-            }
-
-            supabase.from("order_items").insert(orderItems)
-
-            supabase.from("carts").delete {
-                filter { eq("user_id", userId) }
-            }
-
-            Log.d("OrderService", "Order placed successfully: $orderId")
-            true
-        } catch (e: Exception) {
-            Log.e("OrderService", "Error placing order", e)
-            false
-        }
     }
 
 
@@ -166,13 +141,12 @@ fun AppNavigation() {
                 currentScreen = "details"
             },
             onLogout = { currentScreen = "main" },
-            onAddToCart = { product ->
+            onAddToCart = { product, callback ->
                 coroutineScope.launch {
-                    currentUserId?.let {
-                        if (!addToCart(it, product.id)) {
-                            Log.e("Cart", "Failed to add product to cart")
-                        }
-                    } ?: Log.e("Cart", "User ID is null")
+                    currentUserId?.let { userId ->
+                        val result = addToCart(userId, product.id)
+                        callback(result)
+                    }
                 }
             },
             onViewCart = { currentScreen = "cart" },
@@ -245,17 +219,18 @@ fun AppNavigation() {
             }
             CartScreen(
                 userId = userId,
-                cartItems = cartItems, // Передаём список товаров
+                cartItems = cartItems,
                 onBack = { currentScreen = "catalog" },
-                onPlaceOrder = { address -> // Передаём адрес в placeOrderSafely
+                onPlaceOrder = { address ->
                     coroutineScope.launch {
-                        if (placeOrderSafely(userId, address)) {
-                            cartItems = emptyList()
+                        val success = placeOrder(userId, address)
+                        if (success) {
+                            cartItems = emptyList() // Очищаем локальную корзину
                             currentScreen = "orderConfirmation"
                         }
                     }
                 },
-                onRemoveItem = { cartItem -> // Передаём логику удаления
+                onRemoveItem = { cartItem ->
                     coroutineScope.launch {
                         if (removeCartItemSafely(cartItem)) {
                             cartItems = fetchCart(userId) // Обновляем корзину после удаления
@@ -264,6 +239,7 @@ fun AppNavigation() {
                 }
             )
         }
+
 
 
         "orderHistory" -> {
@@ -333,6 +309,62 @@ fun AppNavigation() {
                 )
             }
         }
+        "manageOrders" -> {
+
+
+            LaunchedEffect(Unit) {
+                orders = fetchOrdersAdmin()
+            }
+
+            if (selectedOrderItems != null) {
+                // Экран просмотра товаров в заказе
+                OrderDetailsScreen(
+                    orderItems = selectedOrderItems ?: emptyList(),
+                    onBack = { selectedOrderItems = null }
+                )
+            } else {
+                // Основной экран управления заказами
+                OrderManagementScreen(
+                    orders = orders,
+                    onUpdateOrder = { orderId, newStatus ->
+                        coroutineScope.launch {
+                            val updateRequestJson = Json.encodeToString(
+                                UpdateOrderRequest.serializer(),
+                                UpdateOrderRequest(status = newStatus, address = null)
+                            )
+                            val success = updateOrder(orderId, updateRequestJson)
+                            if (success) {
+                                orders = fetchOrdersAdmin() // Обновляем список заказов
+                            }
+                        }
+                    },
+                    onViewOrderItems = { orderId -> // Исправлено: параметр переименован
+                        coroutineScope.launch {
+                            selectedOrderItems = fetchOrderItems(orderId)
+                        }
+                    },
+                    onBack = { currentScreen = "adminDashboard" },
+                )
+            }
+        }
+
+
+        "orderDetails" -> selectedOrder?.let { order ->
+            var orderItems by remember { mutableStateOf<List<OrderItem>>(emptyList()) }
+
+            LaunchedEffect(order.id) {
+                orderItems = fetchOrderItems(order.id)
+            }
+
+            OrderDetailsScreen(
+                orderItems = selectedOrderItems ?: emptyList(),
+                onBack = { currentScreen = "manageOrders" }
+            )
+
+        } ?: run {
+            currentScreen = "manageOrders"
+        }
+
 
     }
 }
@@ -353,12 +385,20 @@ fun MainScreen(
         Text(
             text = "Онлайн магазин музыкальных товаров",
             style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
         Button(
             onClick = onLoginClick,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = MaterialTheme.shapes.small,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
             Text("Вход")
         }
@@ -367,7 +407,14 @@ fun MainScreen(
 
         Button(
             onClick = onRegisterClick,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = MaterialTheme.shapes.small,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary
+            )
         ) {
             Text("Регистрация")
         }
@@ -376,10 +423,16 @@ fun MainScreen(
 
         Button(
             onClick = onGuestLoginClick,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = MaterialTheme.shapes.small,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary
+            )
         ) {
             Text("Войти как гость")
         }
     }
 }
-

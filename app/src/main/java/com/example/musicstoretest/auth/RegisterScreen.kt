@@ -2,7 +2,9 @@ package com.example.musicstoretest.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -19,67 +21,102 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onBack: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
-    val context = LocalContext.current
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .statusBarsPadding()
+            .imePadding()
     ) {
-        Text("Регистрация", modifier = Modifier.padding(bottom = 16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .align(Alignment.TopCenter),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Регистрация",
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Имя") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Имя") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
 
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Пароль") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Пароль") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        if (name.isBlank() || email.isBlank() || password.isBlank()) {
+                            errorMessage = "Все поля должны быть заполнены!"
+                            return@launch
+                        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            coroutineScope.launch(Dispatchers.IO) {
-                try {
-                    registerUser(email, password, name)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Успешная регистрация", Toast.LENGTH_SHORT).show()
-                        onRegisterSuccess()
+                        try {
+                            registerUser(email, password, name)
+                            Toast.makeText(context, "Успешная регистрация", Toast.LENGTH_SHORT).show()
+                            onRegisterSuccess()
+                        } catch (e: Exception) {
+                            errorMessage = "Ошибка регистрации: ${e.localizedMessage}"
+                        }
                     }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Ошибка регистрации: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small
+            ) {
+                Text("Зарегистрироваться")
             }
-        }) {
-            Text("Зарегистрироваться")
+
+            errorMessage?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Ошибка: $it",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = onBack) {
+        Button(
+            onClick = onBack,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.small
+        ) {
             Text("Назад")
         }
     }
 }
+

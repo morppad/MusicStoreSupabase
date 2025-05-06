@@ -12,6 +12,7 @@ composeBom = "2024.04.01"
 storage = "1.5.0"
 appcompat = "1.7.0"
 playServicesAnalyticsImpl = "18.2.0"
+foundationAndroid = "1.6.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,6 +34,7 @@ androidx-storage = { group = "androidx.test.services", name = "storage", version
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 play-services-analytics-impl = { group = "com.google.android.gms", name = "play-services-analytics-impl", version.ref = "playServicesAnalyticsImpl" }
 realtime-kt = { module = "io.github.jan-tennert.supabase:realtime-kt" }
+androidx-foundation-android = { group = "androidx.compose.foundation", name = "foundation-android", version.ref = "foundationAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
