@@ -1,6 +1,7 @@
 package com.example.musicstoretest.ui.screens
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,8 +44,10 @@ import java.util.UUID
 fun AddEditUserScreen(
     user: User?,
     onSave: (User) -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onBack: () -> Unit
 ) {
+    BackHandler { onBack() }
     var name by remember { mutableStateOf(user?.name ?: "") }
     var email by remember { mutableStateOf(user?.email ?: "") }
     var role by remember { mutableStateOf(user?.role ?: "customer") }

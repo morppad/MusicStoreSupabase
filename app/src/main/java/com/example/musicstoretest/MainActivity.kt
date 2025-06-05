@@ -150,7 +150,9 @@ fun AppNavigation() {
                 }
             },
             onViewCart = { currentScreen = "cart" },
-            onViewOrderHistory = { currentScreen = "orderHistory" }
+            onViewOrderHistory = { currentScreen = "orderHistory" },
+            onBack = { currentScreen = "main" }
+
         )
         "guestCatalog" -> GuestCatalogScreen(
             products = products,
@@ -158,7 +160,8 @@ fun AppNavigation() {
                 selectedProduct = product
                 currentScreen = "guestDetails"
             },
-            onLogout = { currentScreen = "main" }
+            onBack = { currentScreen = "main" }
+
         )
         "details" -> selectedProduct?.let { product ->
             ProductDetailsScreen(
@@ -176,7 +179,8 @@ fun AppNavigation() {
             onManageProductsClick = { currentScreen = "manageProducts" },
             onManageUsersClick = { currentScreen = "manageUsers" },
             onManageOrdersClick = { currentScreen = "manageOrders" },
-            onLogout = { currentScreen = "main" }
+            onLogout = { currentScreen = "main" },
+            onBack = { currentScreen = "main" }
         )
         "manageProducts" -> ProductsManagementScreen(
             products = products,
@@ -211,7 +215,8 @@ fun AppNavigation() {
                     currentScreen = "manageProducts"
                 }
             },
-            onCancel = { currentScreen = "manageProducts" }
+            onCancel = { currentScreen = "manageProducts" },
+            onBack = { currentScreen = "manageProducts" }
         )
         "cart" -> currentUserId?.let { userId ->
             LaunchedEffect(userId) {
@@ -293,7 +298,8 @@ fun AppNavigation() {
                             currentScreen = "manageUsers"
                         }
                     },
-                    onCancel = { currentScreen = "manageUsers" }
+                    onCancel = { currentScreen = "manageUsers" },
+                    onBack = { currentScreen = "manageUsers" }
                 )
             } else {
                 AddEditUserScreen(
@@ -305,7 +311,8 @@ fun AppNavigation() {
                             currentScreen = "manageUsers"
                         }
                     },
-                    onCancel = { currentScreen = "manageUsers" }
+                    onCancel = { currentScreen = "manageUsers" },
+                    onBack = { currentScreen = "manageUsers" }
                 )
             }
         }

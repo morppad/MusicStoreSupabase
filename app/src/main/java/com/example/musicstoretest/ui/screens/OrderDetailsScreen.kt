@@ -1,5 +1,6 @@
 package com.example.musicstoretest.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,6 +33,7 @@ fun OrderDetailsScreen(
     orderItems: List<OrderItem>,
     onBack: () -> Unit
 ) {
+    BackHandler { onBack() }
     Scaffold(
         topBar = {
             TopAppBar(

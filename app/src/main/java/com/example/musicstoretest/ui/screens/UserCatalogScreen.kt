@@ -1,6 +1,7 @@
 package com.example.musicstoretest.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,12 +24,44 @@ fun UserCatalogScreen(
     onLogout: () -> Unit,
     onAddToCart: (Product, (Boolean) -> Unit) -> Unit,
     onViewCart: () -> Unit,
-    onViewOrderHistory: () -> Unit
+    onViewOrderHistory: () -> Unit,
+    onBack: () -> Unit
 ) {
-    var showLogoutConfirmation by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope() // Скоуп для выполнения операций
     val context = LocalContext.current
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    BackHandler {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Подтверждение выхода") },
+            text = { Text("Вы уверены, что хотите выйти?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitDialog = false
+                        onBack()
+                    },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text("Да")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showExitDialog = false },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -99,44 +132,6 @@ fun UserCatalogScreen(
                     .padding(8.dp)
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = { showLogoutConfirmation = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.small,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-        ) {
-            Text("Выйти", color = MaterialTheme.colorScheme.onError)
-        }
-    }
-
-    if (showLogoutConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showLogoutConfirmation = false },
-            title = { Text("Подтверждение выхода") },
-            text = { Text("Вы уверены, что хотите выйти?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showLogoutConfirmation = false
-                        onLogout()
-                    },
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text("Да")
-                }
-            },
-            dismissButton = {
-                Button(
-                    onClick = { showLogoutConfirmation = false },
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text("Отмена")
-                }
-            }
-        )
     }
 }
 

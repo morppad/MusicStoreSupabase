@@ -1,8 +1,10 @@
 package com.example.musicstoretest.auth
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -18,13 +20,45 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun RegisterScreen(onRegisterSuccess: () -> Unit, onBack: () -> Unit) {
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    var showExitDialog by remember { mutableStateOf(false) }
 
+    BackHandler {
+        showExitDialog = true
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Подтверждение выхода") },
+            text = { Text("Вы уверены, что хотите отменить регистрацию?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitDialog = false
+                        onBack()
+                    },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text("Да")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showExitDialog = false },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()

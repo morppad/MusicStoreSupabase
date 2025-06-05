@@ -1,6 +1,7 @@
 package com.example.musicstoretest.ui.screens
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -39,14 +40,17 @@ import java.util.UUID
 fun AddEditProductScreen(
     product: Product?,
     onSave: (Product) -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onBack: () -> Unit
 ) {
+    BackHandler { onBack() }
     var name by remember { mutableStateOf(product?.name ?: "") }
     var price by remember { mutableStateOf(product?.price?.toString() ?: "") }
     var stock by remember { mutableStateOf(product?.stock?.toString() ?: "") }
     var description by remember { mutableStateOf(product?.description ?: "") }
     var imageUrl by remember { mutableStateOf(product?.image_url ?: "") }
     var showUploadSuccess by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -70,7 +74,7 @@ fun AddEditProductScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween, // Пространство равномерно распределено
+        verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -81,7 +85,9 @@ fun AddEditProductScreen(
         )
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize().weight(1f),
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -140,15 +146,29 @@ fun AddEditProductScreen(
             }
         }
 
+        errorMessage?.let {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Кнопки управления
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(
                 onClick = {
+                    // Проверка полей
+                    if (name.isBlank() || price.isBlank() || stock.isBlank() || description.isBlank()) {
+                        errorMessage = "Все поля должны быть заполнены!"
+                        return@Button
+                    }
+
                     val productToSave = Product(
                         id = product?.id ?: UUID.randomUUID().toString(),
                         name = name,
@@ -160,6 +180,7 @@ fun AddEditProductScreen(
                         updated_at = getCurrentTimestamp()
                     )
                     onSave(productToSave)
+                    errorMessage = null
                     showUploadSuccess = false
                 },
                 modifier = Modifier.weight(1f),
@@ -173,6 +194,7 @@ fun AddEditProductScreen(
 
             Button(
                 onClick = {
+                    errorMessage = null
                     showUploadSuccess = false
                     onCancel()
                 },
@@ -185,3 +207,4 @@ fun AddEditProductScreen(
         }
     }
 }
+

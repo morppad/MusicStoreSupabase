@@ -1,5 +1,6 @@
 package com.example.musicstoretest.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +24,7 @@ fun UsersManagementScreen(
     onDeleteUserClick: (User) -> Unit,
     onBack: () -> Unit
 ) {
+    BackHandler { onBack() }
     Scaffold(
         topBar = {
             TopAppBar(

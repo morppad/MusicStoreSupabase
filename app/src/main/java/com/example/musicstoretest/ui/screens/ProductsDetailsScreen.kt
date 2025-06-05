@@ -1,5 +1,6 @@
 package com.example.musicstoretest.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
@@ -14,7 +15,11 @@ import coil3.compose.rememberAsyncImagePainter
 import com.example.musicstoretest.data.models.Product
 
 @Composable
-fun ProductDetailsScreen(product: Product, onBack: () -> Unit) {
+fun ProductDetailsScreen(
+    product: Product,
+    onBack: () -> Unit
+) {
+    BackHandler { onBack() }
     Column(
         modifier = Modifier
             .fillMaxSize()

@@ -1,5 +1,6 @@
 package com.example.musicstoretest.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,10 +24,11 @@ import com.example.musicstoretest.data.models.CartItem
 fun CartScreen(
     userId: String,
     cartItems: List<CartItem>,
-    onBack: () -> Unit,
     onPlaceOrder: (String) -> Unit,
-    onRemoveItem: (CartItem) -> Unit
+    onRemoveItem: (CartItem) -> Unit,
+    onBack: () -> Unit
 ) {
+    BackHandler { onBack() }
     val context = LocalContext.current
     var showPaymentScreen by remember { mutableStateOf(false) }
     val orderTotal by remember(cartItems) {

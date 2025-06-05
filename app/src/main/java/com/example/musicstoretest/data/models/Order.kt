@@ -22,5 +22,5 @@ data class OrderItem(
     val product_id: String,
     val quantity: Int,
     val price: Double,
-    @SerialName("products") val product: Product? = null // Указываем, что Supabase передает это поле как "products"
+    @SerialName("products") val product: Product? = null
 )

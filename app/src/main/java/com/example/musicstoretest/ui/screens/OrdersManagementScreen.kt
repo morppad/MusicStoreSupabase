@@ -1,5 +1,6 @@
 package com.example.musicstoretest.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,7 @@ fun OrderManagementScreen(
     onViewOrderItems: (String) -> Unit,
     onBack: () -> Unit
 ) {
+    BackHandler { onBack() }
     Scaffold(
         topBar = {
             TopAppBar(
